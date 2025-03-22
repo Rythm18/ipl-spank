@@ -120,6 +120,18 @@ export default function Home(): JSX.Element {
     ],
   };
 
+
+  const sortedTeams = Object.entries(slaps).sort(([, aCount], [, bCount]) => bCount - aCount);
+  const topTeam = sortedTeams[0][0] as Team;
+
+  const crypticMessages: Record<Team, string> = {
+    rcb: "So close, yet so far—every year. Keep dreaming, Bangalore!",
+    mi: "Money might buy trophies, but can it buy some loyalty too?",
+    csk: "A grandpa squad that still whoops you. Old is gold, baby!",
+  };
+
+  const topMessage = crypticMessages[topTeam];
+
   // If you want to keep the chance moderate, say 50% 
   const SOUND_PLAY_CHANCE = 0.5;
 
@@ -232,25 +244,30 @@ export default function Home(): JSX.Element {
       </div>
 
       {/* Leaderboard */}
-      <div className="mt-10 w-full max-w-md bg-white rounded-lg shadow-md p-6 mx-2">
-        <h2 className="text-2xl font-bold text-center mb-4">
-          Spank Leaderboard
-        </h2>
-        <ul className="space-y-3 text-lg">
-          <li className="flex justify-between">
-            <span>RCB</span>
-            <span>{slaps.rcb}</span>
-          </li>
-          <li className="flex justify-between">
-            <span>MI</span>
-            <span>{slaps.mi}</span>
-          </li>
-          <li className="flex justify-between">
-            <span>CSK</span>
-            <span>{slaps.csk}</span>
-          </li>
-        </ul>
-      </div>
+      <div className="mt-10 w-full max-w-md bg-white rounded-lg shadow-md p-6 mx-2 transition-all">
+  <h2 className="text-2xl font-bold text-center mb-4">
+    Spank Leaderboard
+  </h2>
+  
+  {/* The sorted list */}
+  <ul className="space-y-3 text-lg transition-all">
+    {sortedTeams.map(([team, count]) => (
+      <li key={team} className="flex justify-between">
+        <span className="font-medium">{team.toUpperCase()}</span>
+        <span>{count}</span>
+      </li>
+    ))}
+  </ul>
+
+  {/* Show a cryptic message for the top team */}
+  <div className="p-4 mt-6 bg-yellow-50 text-yellow-700 text-center rounded-md shadow">
+    <strong>{topTeam.toUpperCase()}</strong> leads the pack!
+    <p className="mt-2 text-sm italic">
+      {topMessage}
+    </p>
+  </div>
+</div>
+
 
       {/* Footer */}
       <footer className="mt-10 flex flex-col items-center gap-6 text-sm text-gray-600 px-4">
