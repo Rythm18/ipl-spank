@@ -1,102 +1,271 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect, JSX } from 'react';
+import Image from 'next/image';
+import { db } from './firebaseConfig';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
+
+type Team = 'rcb' | 'mi' | 'csk';
+
+interface SlapCounts {
+  rcb: number;
+  mi: number;
+  csk: number;
+}
+
+interface AnimationState {
+  rcb: boolean;
+  mi: boolean;
+  csk: boolean;
+}
+
+export default function Home(): JSX.Element {
+  const [slaps, setSlaps] = useState<SlapCounts>({
+    rcb: 1000,
+    mi: 900,
+    csk: 800,
+  });
+  const [animating, setAnimating] = useState<AnimationState>({
+    rcb: false,
+    mi: false,
+    csk: false,
+  });
+  const [memeVisible, setMemeVisible] = useState<AnimationState>({
+    rcb: false,
+    mi: false,
+    csk: false,
+  });
+
+  // Disable clicks per team while the meme is floating
+  const [disableClick, setDisableClick] = useState<AnimationState>({
+    rcb: false,
+    mi: false,
+    csk: false,
+  });
+
+  // Holds the *currently selected* random meme for each team
+  const [randomMeme, setRandomMeme] = useState<Record<Team, string>>({
+    rcb: '',
+    mi: '',
+    csk: '',
+  });
+
+  useEffect(() => {
+    const docRef = doc(db, 'slaps', 'br');
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setSlaps(docSnap.data() as SlapCounts);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // --- SOUND MAPPING (logo-specific) ---
+  // Place your .mp3 or .wav files in public/sounds/... 
+  // so they can be accessed at /sounds/filename.mp3
+  const soundMapping: Record<Team, string[]> = {
+    rcb: [
+      '/sounds/rcb1.mp3',
+      '/sounds/all.mp3',
+      '/sounds/all3.mp3',
+    ],
+    mi: [
+      '/sounds/mi1.mp3',
+      '/sounds/mi2.mp3',
+      '/sounds/all.mp3',
+      '/sounds/all3.mp3',
+    ],
+    csk: [
+      '/sounds/csk1.mp3',
+      '/sounds/csk2.mp3',
+      '/sounds/all.mp3',
+      '/sounds/all3.mp3',
+    ],
+  };
+
+  // Meme arrays
+  const memeMapping: Record<Team, string[]> = {
+    rcb: [
+      '/rcb1.webp',
+      '/rcb2.webp',
+      '/rcb3.webp',
+      '/rcb4.webp',
+      '/rcb5.webp',
+      '/rcb6.jpeg',
+      '/rcb7.webp',
+      '/all.jpeg',
+      // '/all2.jpeg',
+      '/sanju.png',
+    ],
+    mi: [
+      '/mi1.jpg',
+      '/mi2.jpg',
+      '/mi3.jpeg',
+      '/all.jpeg',
+      // '/all2.jpeg',
+      '/sanju.png',
+      '/mi4.webp',
+    ],
+    csk: [
+      '/csk1.webp',
+      '/csk2.webp',
+      '/csk3.webp',
+      '/csk4.webp',
+      '/csk5.jpeg',
+      '/csk6.jpeg',
+      '/csk7.jpeg',
+      '/all.jpeg',
+      // '/all2.jpeg',
+      '/sanju.png',
+    ],
+  };
+
+  // If you want to keep the chance moderate, say 50% 
+  const SOUND_PLAY_CHANCE = 0.5;
+
+  const handleClick = async (team: Team) => {
+    // If clicks are disabled for this team, do nothing
+    if (disableClick[team]) return;
+
+    // Disable further clicks while meme is floating
+    setDisableClick((prev) => ({ ...prev, [team]: true }));
+
+    // 1. Update Firestore
+    const docRef = doc(db, 'slaps', 'br');
+    await updateDoc(docRef, { [team]: slaps[team] + 1 });
+
+    // 2. Trigger slap animation
+    setAnimating((prev) => ({ ...prev, [team]: true }));
+    setTimeout(() => {
+      setAnimating((prev) => ({ ...prev, [team]: false }));
+    }, 600);
+
+    // 3. Pick a random meme once and store it
+    const memes = memeMapping[team];
+    const randomIndex = Math.floor(Math.random() * memes.length);
+    setRandomMeme((prev) => ({
+      ...prev,
+      [team]: memes[randomIndex],
+    }));
+
+    // 4. Possibly play a random sound for that team (50% chance)
+    if (Math.random() < SOUND_PLAY_CHANCE) {
+      const teamSounds = soundMapping[team];
+      if (teamSounds && teamSounds.length > 0) {
+        const randomSoundIndex = Math.floor(Math.random() * teamSounds.length);
+        const audio = new Audio(teamSounds[randomSoundIndex]);
+        // Attempt to play the sound
+        audio.play().catch((err) => {
+          console.warn('Failed to play sound:', err);
+        });
+      }
+    }
+
+    // 5. Show that meme for 1.5 seconds
+    setMemeVisible((prev) => ({ ...prev, [team]: true }));
+    setTimeout(() => {
+      setMemeVisible((prev) => ({ ...prev, [team]: false }));
+      // Re-enable clicks after meme disappears
+      setDisableClick((prev) => ({ ...prev, [team]: false }));
+    }, 1500);
+  };
+
+  // "Send Meme" mail function 
+  const sendMemeMail = async () => {
+    const mailto = 'turbogeek641@gmail.com'
+    const subject = `Meme Submission for 'Spanked'`;
+    const body = 'Hey there! I have a meme for you. Here it is:';
+    window
+      .open(`mailto:${mailto}?subject=${subject}&body=${body}`, '_blank')
+      ?.focus();
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-screen w-full bg-gradient-to-b from-gray-100 to-gray-200 flex flex-col items-center py-10 px-4 text-gray-800">
+      <h1 className="text-3xl sm:text-5xl font-bold text-center mb-10 mx-2">
+        Beat your fav team's haters by spanking their fav team
+      </h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+      {/* Meme Popouts */}
+      {(['rcb', 'mi', 'csk'] as Team[]).map((team) => {
+        if (!memeVisible[team]) return null;
+        return (
+          <div key={`${team}-meme`} className="meme-popout">
             <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+              src={randomMeme[team] || ''}
+              alt={`${team.toUpperCase()} Meme`}
+              width={400}
+              height={400}
+              className="rounded-sm max-w-full max-h-full"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          </div>
+        );
+      })}
+
+      {/* Team Logos in a single row for mobile */}
+      <div className="flex flex-row gap-4 w-full px-4 sm:justify-center sm:gap-8">
+        {(['rcb', 'mi', 'csk'] as Team[]).map((team) => (
+          <div
+            key={team}
+            className="relative flex flex-col items-center cursor-pointer transition-transform duration-300 hover:scale-105"
+            onClick={() => handleClick(team)}
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+            <div
+              className={`relative rounded-full overflow-hidden shadow-lg ${
+                animating[team] ? 'slap-shake' : ''
+              }`}
+            >
+              <Image
+                src={`/${team}main.avif`}
+                alt={`${team.toUpperCase()} Logo`}
+                width={280}
+                height={280}
+                className="rounded-full max-w-full"
+              />
+              {animating[team] && <div className="slap-burst"></div>}
+            </div>
+            <p className="mt-4 text-base sm:text-lg font-semibold">
+              {team.toUpperCase()}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Leaderboard */}
+      <div className="mt-10 w-full max-w-md bg-white rounded-lg shadow-md p-6 mx-2">
+        <h2 className="text-2xl font-bold text-center mb-4">
+          Spank Leaderboard
+        </h2>
+        <ul className="space-y-3 text-lg">
+          <li className="flex justify-between">
+            <span>RCB</span>
+            <span>{slaps.rcb}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>MI</span>
+            <span>{slaps.mi}</span>
+          </li>
+          <li className="flex justify-between">
+            <span>CSK</span>
+            <span>{slaps.csk}</span>
+          </li>
+        </ul>
+      </div>
+
+      {/* Footer */}
+      <footer className="mt-10 flex flex-col items-center gap-6 text-sm text-gray-600 px-4">
+        <p className="text-center max-w-[300px]">
+          This is just a fun project. Taking it seriously is like supporting
+          Punjab Kings in IPL.
+        </p>
+
+        {/* "Send Your Meme" button */}
+        <button
+          className="px-4 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700"
+          onClick={sendMemeMail}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+          Send Your Meme
+        </button>
       </footer>
     </div>
   );
