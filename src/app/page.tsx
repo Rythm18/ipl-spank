@@ -36,14 +36,11 @@ export default function Home(): JSX.Element {
     csk: false,
   });
 
-  // Disable clicks per team while the meme is floating
   const [disableClick, setDisableClick] = useState<AnimationState>({
     rcb: false,
     mi: false,
     csk: false,
   });
-
-  // Holds the *currently selected* random meme for each team
   const [randomMeme, setRandomMeme] = useState<Record<Team, string>>({
     rcb: '',
     mi: '',
@@ -59,10 +56,6 @@ export default function Home(): JSX.Element {
     });
     return () => unsubscribe();
   }, []);
-
-  // --- SOUND MAPPING (logo-specific) ---
-  // Place your .mp3 or .wav files in public/sounds/... 
-  // so they can be accessed at /sounds/filename.mp3
   const soundMapping: Record<Team, string[]> = {
     rcb: [
       '/sounds/rcb1.mp3',
@@ -125,34 +118,28 @@ export default function Home(): JSX.Element {
   const topTeam = sortedTeams[0][0] as Team;
 
   const crypticMessages: Record<Team, string> = {
-    rcb: "So close, yet so far—every year. Keep dreaming, Bangalore!",
-    mi: "Money might buy trophies, but can it buy some loyalty too?",
-    csk: "A grandpa squad that still whoops you. Old is gold, baby!",
+    rcb: "Galat jagah first aa rahe!LOL",
+    mi: "Yaha bhi paiso se khareed liya!",
+    csk: "JAILED!",
   };
 
   const topMessage = crypticMessages[topTeam];
 
-  // If you want to keep the chance moderate, say 50% 
   const SOUND_PLAY_CHANCE = 0.5;
 
   const handleClick = async (team: Team) => {
-    // If clicks are disabled for this team, do nothing
     if (disableClick[team]) return;
 
-    // Disable further clicks while meme is floating
     setDisableClick((prev) => ({ ...prev, [team]: true }));
 
-    // 1. Update Firestore
     const docRef = doc(db, 'slaps', 'br');
     await updateDoc(docRef, { [team]: slaps[team] + 1 });
 
-    // 2. Trigger slap animation
     setAnimating((prev) => ({ ...prev, [team]: true }));
     setTimeout(() => {
       setAnimating((prev) => ({ ...prev, [team]: false }));
     }, 600);
 
-    // 3. Pick a random meme once and store it
     const memes = memeMapping[team];
     const randomIndex = Math.floor(Math.random() * memes.length);
     setRandomMeme((prev) => ({
@@ -160,31 +147,27 @@ export default function Home(): JSX.Element {
       [team]: memes[randomIndex],
     }));
 
-    // 4. Possibly play a random sound for that team (50% chance)
     if (Math.random() < SOUND_PLAY_CHANCE) {
       const teamSounds = soundMapping[team];
       if (teamSounds && teamSounds.length > 0) {
         const randomSoundIndex = Math.floor(Math.random() * teamSounds.length);
         const audio = new Audio(teamSounds[randomSoundIndex]);
-        // Attempt to play the sound
+
         audio.play().catch((err) => {
           console.warn('Failed to play sound:', err);
         });
       }
     }
 
-    // 5. Show that meme for 1.5 seconds
     setMemeVisible((prev) => ({ ...prev, [team]: true }));
     setTimeout(() => {
       setMemeVisible((prev) => ({ ...prev, [team]: false }));
-      // Re-enable clicks after meme disappears
       setDisableClick((prev) => ({ ...prev, [team]: false }));
     }, 1500);
   };
 
-  // "Send Meme" mail function 
   const sendMemeMail = async () => {
-    const mailto = 'turbogeek641@gmail.com'
+    const mailto = 'ridhamk.j@gmail.com'
     const subject = `Meme Submission for 'Spanked'`;
     const body = 'Hey there! I have a meme for you. Here it is:';
     window
@@ -214,7 +197,6 @@ export default function Home(): JSX.Element {
         );
       })}
 
-      {/* Team Logos in a single row for mobile */}
       <div className="flex flex-row gap-4 w-full px-4 sm:justify-center sm:gap-8">
         {(['rcb', 'mi', 'csk'] as Team[]).map((team) => (
           <div
@@ -249,7 +231,6 @@ export default function Home(): JSX.Element {
     Spank Leaderboard
   </h2>
   
-  {/* The sorted list */}
   <ul className="space-y-3 text-lg transition-all">
     {sortedTeams.map(([team, count]) => (
       <li key={team} className="flex justify-between">
@@ -259,7 +240,6 @@ export default function Home(): JSX.Element {
     ))}
   </ul>
 
-  {/* Show a cryptic message for the top team */}
   <div className="p-4 mt-6 bg-yellow-50 text-yellow-700 text-center rounded-md shadow">
     <strong>{topTeam.toUpperCase()}</strong> leads the pack!
     <p className="mt-2 text-sm italic">
@@ -269,14 +249,12 @@ export default function Home(): JSX.Element {
 </div>
 
 
-      {/* Footer */}
       <footer className="mt-10 flex flex-col items-center gap-6 text-sm text-gray-600 px-4">
         <p className="text-center max-w-[300px]">
           This is just a fun project. Taking it seriously is like supporting
           Punjab Kings in IPL.
         </p>
 
-        {/* "Send Your Meme" button */}
         <button
           className="px-4 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700"
           onClick={sendMemeMail}
